@@ -1,59 +1,520 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
   <meta charset="UTF-8">
-  <title>EPSS CVE Lookup</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>EPSS CVE Analyzer</title>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
   <style>
-    body { font-family: Arial, sans-serif; background: #f4f4f4; padding: 20px; }
-    h1 { color: #333; }
-    input { padding: 8px; font-size: 14px; width: 250px; }
-    button { padding: 8px 12px; font-size: 14px; cursor: pointer; }
-    #result { margin-top: 20px; padding: 15px; background: #fff; border-radius: 5px; }
-    .error { color: red; }
+    :root {
+      --primary: #4361ee;
+      --primary-dark: #3a56d4;
+      --secondary: #7209b7;
+      --success: #06d6a0;
+      --warning: #ffd166;
+      --danger: #ef476f;
+      --dark: #212529;
+      --light: #f8f9fa;
+      --gray: #6c757d;
+      --border: #dee2e6;
+      --card-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+    }
+    
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+    
+    body {
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      background: linear-gradient(135deg, #f5f7fa 0%, #e4edf5 100%);
+      color: var(--dark);
+      line-height: 1.6;
+      min-height: 100vh;
+      padding: 20px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+    }
+    
+    .container {
+      width: 100%;
+      max-width: 800px;
+      margin: 0 auto;
+    }
+    
+    header {
+      text-align: center;
+      margin-bottom: 2rem;
+    }
+    
+    .logo {
+      font-size: 2.5rem;
+      color: var(--primary);
+      margin-bottom: 0.5rem;
+    }
+    
+    h1 {
+      font-size: 2.2rem;
+      color: var(--dark);
+      margin-bottom: 0.5rem;
+      background: linear-gradient(to right, var(--primary), var(--secondary));
+      -webkit-background-clip: text;
+      background-clip: text;
+      color: transparent;
+    }
+    
+    .subtitle {
+      color: var(--gray);
+      font-size: 1.1rem;
+      max-width: 600px;
+      margin: 0 auto;
+    }
+    
+    .card {
+      background: white;
+      border-radius: 12px;
+      box-shadow: var(--card-shadow);
+      overflow: hidden;
+      margin-bottom: 2rem;
+    }
+    
+    .card-header {
+      background: linear-gradient(to right, var(--primary), var(--primary-dark));
+      color: white;
+      padding: 1.25rem 1.5rem;
+    }
+    
+    .card-body {
+      padding: 1.5rem;
+    }
+    
+    .input-group {
+      display: flex;
+      margin-bottom: 1rem;
+      border-radius: 8px;
+      overflow: hidden;
+      box-shadow: 0 2px 6px rgba(0, 0, 0, 0.1);
+    }
+    
+    #cveInput {
+      flex: 1;
+      padding: 14px 18px;
+      font-size: 16px;
+      border: none;
+      border-radius: 8px 0 0 8px;
+      background: var(--light);
+      outline: none;
+      transition: all 0.3s ease;
+    }
+    
+    #cveInput:focus {
+      background: white;
+      box-shadow: inset 0 0 0 2px var(--primary);
+    }
+    
+    #cveInput::placeholder {
+      color: #adb5bd;
+    }
+    
+    #searchBtn {
+      background: var(--primary);
+      color: white;
+      border: none;
+      padding: 0 28px;
+      font-size: 16px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.3s ease;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    
+    #searchBtn:hover {
+      background: var(--primary-dark);
+    }
+    
+    #searchBtn i {
+      margin-right: 8px;
+    }
+    
+    #result {
+      min-height: 200px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      transition: all 0.3s ease;
+    }
+    
+    .result-content {
+      width: 100%;
+    }
+    
+    .stats-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+      gap: 1.5rem;
+      margin-bottom: 1.5rem;
+    }
+    
+    .stat-card {
+      background: var(--light);
+      border-radius: 8px;
+      padding: 1.25rem;
+      text-align: center;
+      box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+    }
+    
+    .stat-value {
+      font-size: 2.2rem;
+      font-weight: 700;
+      margin: 0.5rem 0;
+    }
+    
+    .low-risk { color: var(--success); }
+    .medium-risk { color: var(--warning); }
+    .high-risk { color: var(--danger); }
+    
+    .stat-label {
+      font-size: 0.9rem;
+      color: var(--gray);
+      text-transform: uppercase;
+      letter-spacing: 1px;
+    }
+    
+    .risk-meter {
+      margin: 1.5rem 0;
+    }
+    
+    .meter-labels {
+      display: flex;
+      justify-content: space-between;
+      margin-bottom: 0.5rem;
+      font-size: 0.9rem;
+      color: var(--gray);
+    }
+    
+    .meter-bar {
+      height: 12px;
+      background: #e9ecef;
+      border-radius: 6px;
+      overflow: hidden;
+    }
+    
+    .meter-fill {
+      height: 100%;
+      border-radius: 6px;
+      transition: width 0.8s ease;
+    }
+    
+    .description {
+      background: var(--light);
+      padding: 1.25rem;
+      border-radius: 8px;
+      margin-top: 1.5rem;
+      font-size: 0.95rem;
+    }
+    
+    .description h3 {
+      margin-bottom: 0.75rem;
+      color: var(--dark);
+    }
+    
+    .loading {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+    }
+    
+    .spinner {
+      width: 50px;
+      height: 50px;
+      border: 4px solid rgba(0, 0, 0, 0.1);
+      border-left-color: var(--primary);
+      border-radius: 50%;
+      animation: spin 1s linear infinite;
+      margin-bottom: 1rem;
+    }
+    
+    @keyframes spin {
+      to { transform: rotate(360deg); }
+    }
+    
+    .skeleton {
+      background: linear-gradient(90deg, #f0f0f0 25%, #e0e0e0 50%, #f0f0f0 75%);
+      background-size: 200% 100%;
+      animation: loading 1.5s infinite;
+      border-radius: 4px;
+      height: 20px;
+      margin: 10px 0;
+    }
+    
+    @keyframes loading {
+      0% { background-position: 200% 0; }
+      100% { background-position: -200% 0; }
+    }
+    
+    .error {
+      color: var(--danger);
+      background: #f8d7da;
+      border-left: 4px solid var(--danger);
+      padding: 1rem;
+      border-radius: 4px;
+      max-width: 500px;
+      text-align: center;
+    }
+    
+    .error i {
+      margin-right: 8px;
+    }
+    
+    footer {
+      text-align: center;
+      color: var(--gray);
+      font-size: 0.9rem;
+      margin-top: 2rem;
+    }
+    
+    footer a {
+      color: var(--primary);
+      text-decoration: none;
+    }
+    
+    footer a:hover {
+      text-decoration: underline;
+    }
+    
+    .info-text {
+      color: var(--gray);
+      font-size: 0.9rem;
+      margin-top: 0.5rem;
+      text-align: center;
+    }
+    
+    /* Responsive design */
+    @media (max-width: 768px) {
+      .input-group {
+        flex-direction: column;
+      }
+      
+      #cveInput {
+        border-radius: 8px;
+        margin-bottom: 12px;
+      }
+      
+      #searchBtn {
+        border-radius: 8px;
+        padding: 14px;
+      }
+      
+      .stats-grid {
+        grid-template-columns: 1fr;
+      }
+    }
   </style>
 </head>
 <body>
+  <div class="container">
+    <header>
+      <div class="logo">
+        <i class="fas fa-shield-alt"></i>
+      </div>
+      <h1>EPSS CVE Analyzer</h1>
+      <p class="subtitle">Check the Exploit Prediction Scoring System (EPSS) score for any CVE identifier</p>
+    </header>
+    
+    <div class="card">
+      <div class="card-header">
+        <h2><i class="fas fa-search"></i> Vulnerability Lookup</h2>
+      </div>
+      <div class="card-body">
+        <div class="input-group">
+          <input type="text" id="cveInput" placeholder="Enter CVE identifier (e.g., CVE-2022-27225)" autocomplete="off">
+          <button id="searchBtn">
+            <i class="fas fa-search"></i> Analyze
+          </button>
+        </div>
+        <p class="info-text">EPSS scores range from 0 to 1 (higher values indicate greater probability of exploitation)</p>
+        
+        <div id="result">
+          <p>Enter a CVE identifier to check its EPSS score</p>
+        </div>
+      </div>
+    </div>
+    
+    <footer>
+      <p>EPSS data provided by the <a href="https://www.first.org/epss/" target="_blank">Forum of Incident Response and Security Teams (FIRST)</a></p>
+      <p>This tool is for informational purposes only. Always verify with official sources.</p>
+    </footer>
+  </div>
 
-<h1>EPSS CVE Lookup</h1>
-<p>Enter a CVE ID (e.g. CVE-2022-27225):</p>
-
-<input type="text" id="cveInput" placeholder="CVE-YYYY-NNNN">
-<button onclick="fetchEPSS()">Search</button>
-
-<div id="result"></div>
-
-<script>
-async function fetchEPSS() {
-  const cve = document.getElementById("cveInput").value.trim();
-  const resultDiv = document.getElementById("result");
-  resultDiv.innerHTML = "";
-
-  if (!cve) {
-    resultDiv.innerHTML = "<p class='error'>Please enter a CVE ID.</p>";
-    return;
-  }
-
-  try {
-    const apiUrl = `https://api.first.org/data/v1/epss?cve=${encodeURIComponent(cve)}`;
-    const res = await fetch(apiUrl);
-    const data = await res.json();
-
-    if (data && data.data && Object.keys(data.data).length > 0) {
-      const epssInfo = Object.values(data.data)[0];
-      resultDiv.innerHTML = `
-        <strong>CVE:</strong> ${epssInfo.cve}<br>
-        <strong>EPSS Score:</strong> ${epssInfo.epss}<br>
-        <strong>Percentile:</strong> ${epssInfo.percentile}
-      `;
-    } else {
-      resultDiv.innerHTML = "<p class='error'>CVE not found.</p>";
+  <script>
+    // Security and utility functions
+    function escapeHtml(unsafe) {
+      return unsafe
+        .replace(/&/g, "&amp;")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;")
+        .replace(/"/g, "&quot;")
+        .replace(/'/g, "&#039;");
     }
-  } catch (err) {
-    console.error(err);
-    resultDiv.innerHTML = "<p class='error'>Error fetching data.</p>";
-  }
-}
-</script>
-
+    
+    function isValidCve(cve) {
+      const cveRegex = /^CVE-\d{4}-\d{4,}$/;
+      return cveRegex.test(cve);
+    }
+    
+    // Rate limiting variables
+    let lastRequestTime = 0;
+    const requestDelay = 2000; // 2 seconds between requests
+    
+    // DOM elements
+    const cveInput = document.getElementById('cveInput');
+    const searchBtn = document.getElementById('searchBtn');
+    const resultDiv = document.getElementById('result');
+    
+    // Event listeners
+    searchBtn.addEventListener('click', fetchEPSS);
+    cveInput.addEventListener('keyup', (e) => {
+      if (e.key === 'Enter') fetchEPSS();
+    });
+    
+    // Main function to fetch EPSS data
+    async function fetchEPSS() {
+      const cve = cveInput.value.trim();
+      
+      // Clear previous results
+      resultDiv.innerHTML = '';
+      
+      // Input validation
+      if (!cve) {
+        showError('Please enter a CVE identifier');
+        return;
+      }
+      
+      if (!isValidCve(cve)) {
+        showError('Invalid CVE format. Please use format: CVE-YYYY-NNNN');
+        return;
+      }
+      
+      // Rate limiting
+      const currentTime = Date.now();
+      if (currentTime - lastRequestTime < requestDelay) {
+        showError('Please wait a moment before making another request');
+        return;
+      }
+      lastRequestTime = currentTime;
+      
+      // Show loading state
+      showLoading();
+      
+      try {
+        const apiUrl = `https://api.first.org/data/v1/epss?cve=${encodeURIComponent(cve)}`;
+        const res = await fetch(apiUrl);
+        
+        if (!res.ok) {
+          throw new Error(`API request failed with status ${res.status}`);
+        }
+        
+        const data = await res.json();
+        
+        if (data && data.data && Object.keys(data.data).length > 0) {
+          const epssInfo = Object.values(data.data)[0];
+          displayResults(epssInfo);
+        } else {
+          showError('CVE not found in EPSS database');
+        }
+      } catch (err) {
+        console.error('EPSS fetch error:', err);
+        showError('Error fetching data. Please try again later.');
+      }
+    }
+    
+    // Display functions
+    function showLoading() {
+      resultDiv.innerHTML = `
+        <div class="loading">
+          <div class="spinner"></div>
+          <p>Analyzing vulnerability data...</p>
+          <div class="skeleton" style="width: 80%; height: 30px; margin-top: 20px;"></div>
+          <div class="skeleton" style="width: 60%;"></div>
+          <div class="skeleton" style="width: 70%;"></div>
+        </div>
+      `;
+    }
+    
+    function showError(message) {
+      resultDiv.innerHTML = `
+        <div class="error">
+          <i class="fas fa-exclamation-circle"></i> ${escapeHtml(message)}
+        </div>
+      `;
+    }
+    
+    function displayResults(epssInfo) {
+      // Calculate risk level and bar width
+      const epssScore = parseFloat(epssInfo.epss);
+      const percentile = parseFloat(epssInfo.percentile);
+      const barWidth = Math.min(100, Math.max(5, epssScore * 100));
+      
+      let riskClass = 'low-risk';
+      let riskLevel = 'Low';
+      
+      if (epssScore > 0.5) {
+        riskClass = 'high-risk';
+        riskLevel = 'High';
+      } else if (epssScore > 0.2) {
+        riskClass = 'medium-risk';
+        riskLevel = 'Medium';
+      }
+      
+      resultDiv.innerHTML = `
+        <div class="result-content">
+          <div class="stats-grid">
+            <div class="stat-card">
+              <div class="stat-label">CVE Identifier</div>
+              <div class="stat-value">${escapeHtml(epssInfo.cve)}</div>
+            </div>
+            <div class="stat-card">
+              <div class="stat-label">EPSS Score</div>
+              <div class="stat-value ${riskClass}">${epssScore.toFixed(4)}</div>
+              <div>${riskLevel} Risk</div>
+            </div>
+            <div class="stat-card">
+              <div class="stat-label">Percentile</div>
+              <div class="stat-value">${(percentile * 100).toFixed(1)}%</div>
+              <div>Top ${(100 - percentile * 100).toFixed(1)}%</div>
+            </div>
+          </div>
+          
+          <div class="risk-meter">
+            <div class="meter-labels">
+              <span>0.0 (Low Risk)</span>
+              <span>0.5</span>
+              <span>1.0 (High Risk)</span>
+            </div>
+            <div class="meter-bar">
+              <div class="meter-fill ${riskClass}" style="width: ${barWidth}%;"></div>
+            </div>
+          </div>
+          
+          <div class="description">
+            <h3><i class="fas fa-info-circle"></i> About EPSS Scores</h3>
+            <p>The Exploit Prediction Scoring System (EPSS) estimates the probability that a software vulnerability will be exploited in the wild. This CVE has an EPSS score of <strong>${epssScore.toFixed(4)}</strong>, which means there is a <strong>${(epssScore * 100).toFixed(2)}%</strong> probability of this vulnerability being exploited.</p>
+            <p style="margin-top: 10px;">This score is higher than <strong>${(percentile * 100).toFixed(1)}%</strong> of all scored CVEs, placing it in the top <strong>${(100 - percentile * 100).toFixed(1)}%</strong> of vulnerabilities by exploit probability.</p>
+          </div>
+        </div>
+      `;
+    }
+    
+    // Example data for initial demo
+    setTimeout(() => {
+      cveInput.value = "CVE-2022-27225";
+    }, 1000);
+  </script>
 </body>
 </html>
